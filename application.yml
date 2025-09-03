@@ -1,0 +1,20 @@
+general:
+  kafka-topic: midas-transactions
+
+spring:
+
+  # point both producer & consumer at the embedded broker started by @EmbeddedKafka
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+
+    consumer:
+      group-id: midas-core-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: '*'
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
