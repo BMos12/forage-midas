@@ -3,10 +3,12 @@ package com.jpmc.midascore.service;
 import com.jpmc.midascore.component.DatabaseConduit;
 import com.jpmc.midascore.entity.TransactionRecord;
 import com.jpmc.midascore.entity.UserRecord;
+import com.jpmc.midascore.foundation.Incentive;
 import com.jpmc.midascore.foundation.Transaction;
 import com.jpmc.midascore.repository.TransactionRecordRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -15,12 +17,15 @@ public class TransactionService {
 
     private final DatabaseConduit conduit;
     private final TransactionRecordRepository txRepo;
+    private final RestTemplate rest;
     private final AtomicBoolean printScheduled = new AtomicBoolean(false);
 
     public TransactionService(DatabaseConduit conduit,
-            TransactionRecordRepository txRepo) {
+            TransactionRecordRepository txRepo,
+            RestTemplate rest) {
         this.conduit = conduit;
         this.txRepo = txRepo;
+        this.rest = rest;
     }
 
     @Transactional
@@ -37,12 +42,21 @@ public class TransactionService {
 
         // update balances
         sender.setBalance(sender.getBalance() - tx.getAmount());
-        recipient.setBalance(recipient.getBalance() + tx.getAmount());
+        conduit.save(sender);
+
+        // ask incentive API for bonus
+        Incentive inc = rest.postForObject(
+                "http://localhost:8080/incentive", tx, Incentive.class);
+        float bonus = (inc != null ? inc.getAmount() : 0f);
+
+        // need to credit the recipient with tx amount + bonus
+        recipient.setBalance(
+                recipient.getBalance() + tx.getAmount() + bonus);
+        conduit.save(recipient);
 
         // persist user changes and transaction record
-        conduit.save(sender);
-        conduit.save(recipient);
-        txRepo.save(new TransactionRecord(sender, recipient, tx.getAmount()));
+        txRepo.save(new TransactionRecord(
+                sender, recipient, tx.getAmount(), bonus));
 
         // schedule a delayed print of Waldorfs final balance this prints once
         if (printScheduled.compareAndSet(false, true)) {
@@ -54,9 +68,10 @@ public class TransactionService {
                 }
 
                 // Waldorf was inserted 5th in seed file so his ID = 5
-                UserRecord waldorf = conduit.findById(5L);
-                int floored = (int) Math.floor(waldorf.getBalance());
-                System.out.println(">>> WALDORF FINAL BALANCE (floored): " + floored);
+                // Wilbur is 9L
+                UserRecord wilbur = conduit.findById(9L);
+                int floored = (int) Math.floor(wilbur.getBalance());
+                System.out.println(">>> WILBUR FINAL BALANCE (floored): " + floored);
             }).start();
         }
     }

@@ -25,15 +25,21 @@ public class TransactionRecord {
     @Column(nullable = false)
     private Instant timestamp = Instant.now();
 
+    @Column(nullable = false)
+    private Float incentive;
+
     protected TransactionRecord() {
     }
 
     public TransactionRecord(UserRecord sender,
             UserRecord recipient,
-            Float amount) {
+            Float amount,
+            Float incentive) {
         this.sender = sender;
         this.recipient = recipient;
         this.amount = amount;
+        this.incentive = incentive;
+        this.timestamp = Instant.now();
     }
 
     // getters no setters for immutability
@@ -55,6 +61,10 @@ public class TransactionRecord {
 
     public Instant getTimestamp() {
         return timestamp;
+    }
+
+    public Float getIncentive() {
+        return incentive;
     }
 }
 // sets up the many to one relationship from each transaction
