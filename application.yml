@@ -2,6 +2,15 @@ general:
   kafka-topic: midas-transactions
 
 spring:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 
   # point both producer & consumer at the embedded broker started by @EmbeddedKafka
   kafka:
